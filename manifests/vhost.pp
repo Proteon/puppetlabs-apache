@@ -11,6 +11,7 @@ define apache::vhost(
   $docroot_group               = $::apache::params::root_group,
   $docroot_mode                = undef,
   $serveradmin                 = undef,
+  $shib_compat_valid_user      = undef,
   $ssl                         = false,
   $ssl_cert                    = $::apache::default_ssl_cert,
   $ssl_key                     = $::apache::default_ssl_key,
@@ -471,7 +472,6 @@ define apache::vhost(
       allow_override => $override,
       directoryindex => $directoryindex,
     }
-
     if versioncmp($apache_version, '2.4') >= 0 {
       $_directory_version = {
         require => 'all granted',

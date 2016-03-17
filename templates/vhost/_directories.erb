@@ -1,6 +1,10 @@
 <% if @_directories and ! @_directories.empty? -%>
 
   ## Directories, there should at least be a declaration for <%= @docroot %>
+  <%- if @shib_compat_valid_user -%>
+  ShibCompatValidUser <%= @shib_compat_valid_user %>
+
+  <%- end -%>
   <%- [@_directories].flatten.compact.each do |directory| -%>
     <%- if scope.function_versioncmp([@apache_version, '2.4']) >= 0 -%>
       <%- if directory['allow'] and ! [ false, 'false', '' ].include?(directory['allow']) -%>
@@ -33,6 +37,14 @@
         <%- Array(directory['headers']).each do |header| -%>
     Header <%= header %>
       <%- end -%>
+    <%- end -%>
+    <%- if directory['header_name'] -%>
+    HeaderName <%= directory['header_name'] -%>
+
+    <%- end -%>
+    <%- if directory['readme_name'] -%>
+    ReadmeName <%= directory['readme_name'] -%>
+
     <%- end -%>
     <%- if ! directory['geoip_enable'].nil? -%>
     GeoIPEnable <%= scope.function_bool2httpd([directory['geoip_enable']]) %>
@@ -259,6 +271,9 @@
       <%- if directory['shib_use_headers'] and ! directory['shib_use_headers'].empty? -%>
     ShibUseHeaders <%= directory['shib_use_headers'] %>
       <%- end -%>
+    <%- end -%>
+    <%- if directory['shib_disable'] and ! directory['shib_disable'].empty? -%>
+    ShibDisable <%= directory['shib_disable'] %>
     <%- end -%>
     <%- if directory['mellon_enable'] -%>
     MellonEnable "<%= directory['mellon_enable'] %>"
