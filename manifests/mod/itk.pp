@@ -5,15 +5,19 @@ class apache::mod::itk (
   $serverlimit         = '256',
   $maxclients          = '256',
   $maxrequestsperchild = '4000',
-  $apache_version      = $::apache::apache_version,
+  $apache_version      = undef,
 ) {
+  include ::apache
+
+  $_apache_version = pick($apache_version, $apache::apache_version)
+
   if defined(Class['apache::mod::event']) {
     fail('May not include both apache::mod::itk and apache::mod::event on the same node')
   }
   if defined(Class['apache::mod::peruser']) {
     fail('May not include both apache::mod::itk and apache::mod::peruser on the same node')
   }
-  if versioncmp($apache_version, '2.4') < 0 {
+  if versioncmp($_apache_version, '2.4') < 0 {
     if defined(Class['apache::mod::prefork']) {
       fail('May not include both apache::mod::itk and apache::mod::prefork on the same node')
     }
@@ -25,7 +29,7 @@ class apache::mod::itk (
       }
     } else {
       if ! defined(Class['apache::mod::prefork']) {
-        fail('apache::mod::prefork is a prerequisite for apache::mod::itk, please arrange for it to be included.')
+        include ::apache::mod::prefork
       }
     }
   }
@@ -35,7 +39,7 @@ class apache::mod::itk (
   File {
     owner => 'root',
     group => $::apache::params::root_group,
-    mode  => '0644',
+    mode  => $::apache::file_mode,
   }
 
   # Template uses:
@@ -47,6 +51,7 @@ class apache::mod::itk (
   # - $maxrequestsperchild
   file { "${::apache::mod_dir}/itk.conf":
     ensure  => file,
+    mode    => $::apache::file_mode,
     content => template('apache/mod/itk.conf.erb'),
     require => Exec["mkdir ${::apache::mod_dir}"],
     before  => File[$::apache::mod_dir],
@@ -54,9 +59,29 @@ class apache::mod::itk (
   }
 
   case $::osfamily {
+    'redhat': {
+      package { 'httpd-itk':
+        ensure => present,
+      }
+      if versioncmp($_apache_version, '2.4') >= 0 {
+        ::apache::mpm{ 'itk':
+          apache_version => $_apache_version,
+        }
+      }
+      else {
+        file_line { '/etc/sysconfig/httpd itk enable':
+          ensure  => present,
+          path    => '/etc/sysconfig/httpd',
+          line    => 'HTTPD=/usr/sbin/httpd.itk',
+          match   => '#?HTTPD=/usr/sbin/httpd.itk',
+          require => Package['httpd'],
+          notify  => Class['apache::service'],
+        }
+      }
+    }
     'debian', 'freebsd': {
       apache::mpm{ 'itk':
-        apache_version => $apache_version,
+        apache_version => $_apache_version,
       }
     }
     'gentoo': {
